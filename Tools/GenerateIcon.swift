@@ -86,51 +86,92 @@ cg.drawLinearGradient(
     options: []
 )
 
-// MARK: - Battery body
+// MARK: - Battery body (automotive / marine style — two top posts, no side nub)
 
-let batteryRect = CGRect(x: 142, y: 312, width: 680, height: 400)
-let batteryPath = CGPath(roundedRect: batteryRect, cornerWidth: 56, cornerHeight: 56, transform: nil)
+let batteryRect = CGRect(x: 162, y: 340, width: 700, height: 440)
+let batteryPath = CGPath(roundedRect: batteryRect, cornerWidth: 40, cornerHeight: 40, transform: nil)
 
-// Stroke
+// Posts: stubby rounded rectangles sitting on top of the battery body.
+let postWidth: CGFloat = 90
+let postHeight: CGFloat = 58
+let postLeftX  = batteryRect.minX + batteryRect.width * 0.20 - postWidth / 2
+let postRightX = batteryRect.minX + batteryRect.width * 0.80 - postWidth / 2
+let postY = batteryRect.minY - postHeight + 14  // tuck 14pt under the body so the stroke joins cleanly
+
+let leftPost  = CGPath(roundedRect: CGRect(x: postLeftX,  y: postY, width: postWidth, height: postHeight),
+                       cornerWidth: 10, cornerHeight: 10, transform: nil)
+let rightPost = CGPath(roundedRect: CGRect(x: postRightX, y: postY, width: postWidth, height: postHeight),
+                       cornerWidth: 10, cornerHeight: 10, transform: nil)
+
+// Fill posts first so the body stroke overlaps and tucks the bottom seam.
+cg.setFillColor(batteryStroke)
+cg.addPath(leftPost)
+cg.fillPath()
+cg.addPath(rightPost)
+cg.fillPath()
+
+// Body stroke
 cg.setLineWidth(22)
 cg.setStrokeColor(batteryStroke)
 cg.setLineJoin(.round)
 cg.addPath(batteryPath)
 cg.strokePath()
 
-// Inner fill (slightly inset, so the stroke shows on the outside)
+// Inner fill
 let innerRect = batteryRect.insetBy(dx: 11, dy: 11)
-let innerPath = CGPath(roundedRect: innerRect, cornerWidth: 46, cornerHeight: 46, transform: nil)
+let innerPath = CGPath(roundedRect: innerRect, cornerWidth: 30, cornerHeight: 30, transform: nil)
 cg.setFillColor(batteryInner)
 cg.addPath(innerPath)
 cg.fillPath()
 
-// Terminal nub (right side)
-let terminalRect = CGRect(x: 822, y: 462, width: 56, height: 100)
-let terminalPath = CGPath(roundedRect: terminalRect, cornerWidth: 16, cornerHeight: 16, transform: nil)
-cg.setFillColor(batteryStroke)
-cg.addPath(terminalPath)
-cg.fillPath()
+// MARK: - Polarity markings inside the battery, under each post
+
+cg.saveGState()
+cg.setStrokeColor(batteryStroke.copy(alpha: 0.55)!)
+cg.setLineWidth(10)
+cg.setLineCap(.round)
+
+let markY: CGFloat = innerRect.minY + 50
+let plusCenterX  = postRightX + postWidth / 2
+let minusCenterX = postLeftX  + postWidth / 2
+let markHalf: CGFloat = 18
+
+// Minus on the left
+let minusPath = CGMutablePath()
+minusPath.move(to:    CGPoint(x: minusCenterX - markHalf, y: markY))
+minusPath.addLine(to: CGPoint(x: minusCenterX + markHalf, y: markY))
+cg.addPath(minusPath)
+cg.strokePath()
+
+// Plus on the right
+let plusPath = CGMutablePath()
+plusPath.move(to:    CGPoint(x: plusCenterX - markHalf, y: markY))
+plusPath.addLine(to: CGPoint(x: plusCenterX + markHalf, y: markY))
+plusPath.move(to:    CGPoint(x: plusCenterX, y: markY - markHalf))
+plusPath.addLine(to: CGPoint(x: plusCenterX, y: markY + markHalf))
+cg.addPath(plusPath)
+cg.strokePath()
+cg.restoreGState()
 
 // MARK: - Heartbeat / ECG wave
 
 // Drawn twice: a thick soft "glow" underneath and a thinner crisp line on top.
-let baseY: CGFloat = 528    // ECG baseline (centered vertically in battery)
+let baseY: CGFloat = 590    // ECG baseline (below the polarity marks, centered in lower body)
 let startX = innerRect.minX + 32
 let endX   = innerRect.maxX - 32
 
 let wave = CGMutablePath()
 wave.move(to: CGPoint(x: startX, y: baseY))
-wave.addLine(to: CGPoint(x: 260, y: baseY))
-wave.addLine(to: CGPoint(x: 300, y: baseY + 18))   // tiny dip (Q)
-wave.addLine(to: CGPoint(x: 340, y: baseY - 120))  // R spike up
-wave.addLine(to: CGPoint(x: 380, y: baseY + 90))   // S dip down
-wave.addLine(to: CGPoint(x: 430, y: baseY))
-wave.addLine(to: CGPoint(x: 490, y: baseY - 60))   // T wave (rounded peak, but linearized)
-wave.addLine(to: CGPoint(x: 560, y: baseY))
-wave.addLine(to: CGPoint(x: 640, y: baseY))
-wave.addLine(to: CGPoint(x: 680, y: baseY - 40))
-wave.addLine(to: CGPoint(x: 720, y: baseY))
+wave.addLine(to: CGPoint(x: 280, y: baseY))
+wave.addLine(to: CGPoint(x: 320, y: baseY + 18))   // tiny dip (Q)
+wave.addLine(to: CGPoint(x: 360, y: baseY - 120))  // R spike up
+wave.addLine(to: CGPoint(x: 400, y: baseY + 90))   // S dip down
+wave.addLine(to: CGPoint(x: 450, y: baseY))
+wave.addLine(to: CGPoint(x: 510, y: baseY - 60))   // T wave
+wave.addLine(to: CGPoint(x: 580, y: baseY))
+wave.addLine(to: CGPoint(x: 660, y: baseY))
+wave.addLine(to: CGPoint(x: 700, y: baseY - 40))
+wave.addLine(to: CGPoint(x: 740, y: baseY))
 wave.addLine(to: CGPoint(x: endX, y: baseY))
 
 // Soft outer stroke (glow)
