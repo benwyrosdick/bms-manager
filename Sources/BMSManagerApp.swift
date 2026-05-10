@@ -15,6 +15,8 @@ struct BMSManagerApp: App {
 }
 
 struct RootView: View {
+    @AppStorage(AppSettings.debugToolsKey) private var debugToolsEnabled: Bool = false
+
     var body: some View {
         TabView {
             DashboardView()
@@ -23,8 +25,13 @@ struct RootView: View {
             ScannerView()
                 .tabItem { Label("Scan", systemImage: "antenna.radiowaves.left.and.right") }
 
-            DebugLogView()
-                .tabItem { Label("Debug", systemImage: "ladybug.fill") }
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape.fill") }
+
+            if debugToolsEnabled {
+                DebugLogView()
+                    .tabItem { Label("Debug", systemImage: "ladybug.fill") }
+            }
         }
     }
 }
