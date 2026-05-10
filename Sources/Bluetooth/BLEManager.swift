@@ -102,6 +102,16 @@ final class BLEManager: NSObject, ObservableObject {
         registerDiscovered(peripheral).connect()
     }
 
+    /// Insert a pre-built mock connection (no CoreBluetooth involvement).
+    /// Used only by `MockSeed` on the simulator for screenshot data.
+    func registerMock(_ connection: BatteryConnection) {
+        connections[connection.id] = connection
+        connectionObservers[connection.id] = connection.objectWillChange
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.objectWillChange.send() }
+            }
+    }
+
     func openAndConnect(savedIdentifier: String) {
         prepareConnection(for: savedIdentifier)?.connect()
     }

@@ -28,7 +28,7 @@ struct ScannerView: View {
                         }
                     } else {
                         Section("Nearby") {
-                            ForEach(ble.discovered.sorted(by: { $0.rssi > $1.rssi })) { entry in
+                            ForEach(ble.discovered.sorted(by: stableOrder)) { entry in
                                 ScannerRow(
                                     entry: entry,
                                     alreadySaved: savedIdentifiers.contains(entry.peripheral.identifier.uuidString),
@@ -87,6 +87,15 @@ struct ScannerView: View {
         )
         modelContext.insert(battery)
         ble.openAndConnect(peripheral: entry.peripheral)
+    }
+
+    /// Stable sort: case-insensitive name first, then peripheral UUID as a
+    /// tiebreaker. RSSI is shown but not used to order so rows stop jumping
+    /// around as signal fluctuates.
+    private func stableOrder(_ a: DiscoveredPeripheral, _ b: DiscoveredPeripheral) -> Bool {
+        let lhs = a.name.localizedCaseInsensitiveCompare(b.name)
+        if lhs != .orderedSame { return lhs == .orderedAscending }
+        return a.id.uuidString < b.id.uuidString
     }
 }
 

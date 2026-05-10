@@ -16,6 +16,8 @@ struct BatteryScopeApp: App {
 
 struct RootView: View {
     @AppStorage(AppSettings.debugToolsKey) private var debugToolsEnabled: Bool = false
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var ble: BLEManager
 
     var body: some View {
         TabView {
@@ -32,6 +34,11 @@ struct RootView: View {
                 DebugLogView()
                     .tabItem { Label("Debug", systemImage: "ladybug.fill") }
             }
+        }
+        .task {
+            #if targetEnvironment(simulator)
+            MockSeed.seedIfNeeded(modelContext: modelContext, ble: ble)
+            #endif
         }
     }
 }

@@ -35,9 +35,10 @@ struct DeviceInfo: Equatable {
 
 @MainActor
 final class BatteryConnection: NSObject, ObservableObject, Identifiable {
-    nonisolated let peripheral: CBPeripheral
-    nonisolated var id: UUID { peripheral.identifier }
-    nonisolated var peripheralIDString: String { peripheral.identifier.uuidString }
+    nonisolated let identifier: UUID
+    nonisolated let peripheral: CBPeripheral?
+    nonisolated var id: UUID { identifier }
+    nonisolated var peripheralIDString: String { identifier.uuidString }
 
     @Published private(set) var state: ConnectionState = .disconnected
     @Published private(set) var stats: BatteryStats?
@@ -61,16 +62,40 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     private let log = BLELogger.shared
 
     init(peripheral: CBPeripheral, central: CBCentralManager) {
+        self.identifier = peripheral.identifier
         self.peripheral = peripheral
         self.central = central
         super.init()
         peripheral.delegate = self
     }
 
+    /// Mock init for previews and simulator screenshot seeding. Skips all
+    /// CoreBluetooth wiring; callers seed `stats` etc. directly.
+    init(mockIdentifier: UUID,
+         stats: BatteryStats? = nil,
+         cellVoltages: [Double] = [],
+         deviceInfo: DeviceInfo = DeviceInfo()) {
+        self.identifier = mockIdentifier
+        self.peripheral = nil
+        self.central = nil
+        super.init()
+        self.state = .ready
+        self.stats = stats
+        self.cellVoltages = cellVoltages
+        self.cellsUpdatedAt = stats != nil ? .now : nil
+        self.deviceInfo = deviceInfo
+    }
+
+    /// Update a mock connection's stats in place (e.g. to animate fake live data).
+    func updateMockStats(_ stats: BatteryStats) {
+        guard peripheral == nil else { return }
+        self.stats = stats
+    }
+
     // MARK: - Public controls
 
     func connect() {
-        guard let central else { return }
+        guard let central, let peripheral else { return }
         guard state != .connecting && state != .ready && state != .discovering else { return }
         state = .connecting
         log.log("Connect requested", category: .connect, peripheral: peripheralIDString)
@@ -82,7 +107,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     func disconnect() {
         pollTask?.cancel()
         pollTask = nil
-        if let central {
+        if let central, let peripheral {
             central.cancelPeripheralConnection(peripheral)
         }
         state = .disconnected
@@ -110,7 +135,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
 
     /// Manually send the cell-voltages command. Response is logged but not parsed yet.
     func sendCellVoltagesNow() {
-        guard let writeCharacteristic else {
+        guard let peripheral, let writeCharacteristic else {
             log.log("Cannot write: no write characteristic", level: .warn, category: .write, peripheral: peripheralIDString)
             return
         }
@@ -122,6 +147,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     // MARK: - Central callbacks
 
     func handleConnected() {
+        guard let peripheral else { return }
         state = .discovering
         assembler.reset()
         log.log("Discovering services (all)", category: .discover, peripheral: peripheralIDString)
@@ -173,7 +199,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     }
 
     private func requestCellVoltages() {
-        guard let writeCharacteristic else { return }
+        guard let peripheral, let writeCharacteristic else { return }
         let type = writeType(for: writeCharacteristic)
         log.log("→ cell voltages cmd: \(JBDProtocol.cellVoltagesCommand.hexLog)",
                 level: .debug, category: .write, peripheral: peripheralIDString)
@@ -201,7 +227,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     }
 
     private func requestHardwareInfo() {
-        guard let writeCharacteristic else { return }
+        guard let peripheral, let writeCharacteristic else { return }
         let type = writeType(for: writeCharacteristic)
         log.log("→ hardware info cmd: \(JBDProtocol.hardwareInfoCommand.hexLog)",
                 level: .debug, category: .write, peripheral: peripheralIDString)
@@ -209,7 +235,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     }
 
     private func requestBasicInfo() {
-        guard let writeCharacteristic else {
+        guard let peripheral, let writeCharacteristic else {
             log.log("Cannot poll: no write characteristic", level: .warn, category: .write, peripheral: peripheralIDString)
             return
         }
