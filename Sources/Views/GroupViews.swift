@@ -37,13 +37,8 @@ struct GroupDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Members").font(.headline).padding(.horizontal)
                     ForEach(group.batteries.sorted(by: { $0.sortOrder < $1.sortOrder })) { battery in
-                        NavigationLink {
-                            BatteryDetailView(battery: battery)
-                        } label: {
-                            MemberRow(battery: battery)
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal)
+                        MemberRowLink(battery: battery)
+                            .padding(.horizontal)
                     }
                 }
             }
@@ -85,18 +80,66 @@ struct GroupDetailView: View {
     }
 }
 
+private struct MemberRowLink: View {
+    @EnvironmentObject private var ble: BLEManager
+    let battery: Battery
+
+    var body: some View {
+        let connection = ble.connection(for: battery.peripheralIdentifier)
+        let isFailed: Bool = {
+            if case .failed = connection?.state { return true }
+            return false
+        }()
+
+        if isFailed {
+            Button {
+                if let connection {
+                    connection.reconnect()
+                } else {
+                    ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
+                }
+            } label: {
+                MemberRow(battery: battery)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink {
+                BatteryDetailView(battery: battery)
+            } label: {
+                MemberRow(battery: battery)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
 private struct MemberRow: View {
     @EnvironmentObject private var ble: BLEManager
     let battery: Battery
 
     var body: some View {
-        let stats = ble.connection(for: battery.peripheralIdentifier)?.stats
+        let connection = ble.connection(for: battery.peripheralIdentifier)
+        let stats = connection?.stats
+        let failed: Bool = {
+            if case .failed = connection?.state { return true }
+            return false
+        }()
+
         HStack(spacing: 12) {
-            BatteryIcon(soc: stats?.stateOfCharge, charging: stats?.isCharging == true)
-                .frame(width: 24)
+            if failed {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.red)
+                    .frame(width: 24)
+            } else {
+                BatteryIcon(soc: stats?.stateOfCharge, charging: stats?.isCharging == true)
+                    .frame(width: 24)
+            }
             VStack(alignment: .leading) {
                 Text(battery.name).font(.body)
-                if let s = stats {
+                if failed {
+                    Text("Tap to retry").font(.caption).foregroundStyle(.red)
+                } else if let s = stats {
                     Text("\(Format.volts(s.voltage)) · \(Format.amps(s.current))")
                         .font(.caption).foregroundStyle(.secondary).monospacedDigit()
                 } else {
@@ -104,13 +147,18 @@ private struct MemberRow: View {
                 }
             }
             Spacer()
-            if let s = stats {
+            if failed {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .font(.body).foregroundStyle(.red)
+            } else if let s = stats {
                 Text(Format.percent(s.stateOfCharge)).font(.body).bold().monospacedDigit()
+            } else {
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
             }
-            Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .contentShape(Rectangle())
     }
 }
 

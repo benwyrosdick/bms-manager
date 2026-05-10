@@ -28,11 +28,7 @@ struct DashboardView: View {
                 if !groups.isEmpty {
                     Section("Groups") {
                         ForEach(groups) { group in
-                            NavigationLink {
-                                GroupDetailView(group: group)
-                            } label: {
-                                GroupRow(group: group)
-                            }
+                            GroupRowLink(group: group)
                         }
                         .onDelete(perform: deleteGroups)
                     }
@@ -41,11 +37,7 @@ struct DashboardView: View {
                 if !ungrouped.isEmpty {
                     Section(groups.isEmpty ? "Batteries" : "Ungrouped") {
                         ForEach(ungrouped) { battery in
-                            NavigationLink {
-                                BatteryDetailView(battery: battery)
-                            } label: {
-                                BatteryRow(battery: battery)
-                            }
+                            BatteryRowLink(battery: battery)
                         }
                         .onDelete { offsets in deleteBatteries(offsets, in: ungrouped) }
                     }
@@ -99,6 +91,39 @@ struct DashboardView: View {
     }
 }
 
+/// Tap-to-retry wrapper: NavigationLink when healthy, Button-that-reconnects when failed.
+private struct BatteryRowLink: View {
+    @EnvironmentObject private var ble: BLEManager
+    let battery: Battery
+
+    var body: some View {
+        let connection = ble.connection(for: battery.peripheralIdentifier)
+        let isFailed: Bool = {
+            if case .failed = connection?.state { return true }
+            return false
+        }()
+
+        if isFailed {
+            Button {
+                if let connection {
+                    connection.reconnect()
+                } else {
+                    ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
+                }
+            } label: {
+                BatteryRow(battery: battery)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink {
+                BatteryDetailView(battery: battery)
+            } label: {
+                BatteryRow(battery: battery)
+            }
+        }
+    }
+}
+
 private struct BatteryRow: View {
     @EnvironmentObject private var ble: BLEManager
     let battery: Battery
@@ -106,13 +131,27 @@ private struct BatteryRow: View {
     var body: some View {
         let connection = ble.connection(for: battery.peripheralIdentifier)
         let stats = connection?.stats
+        let failed: Bool = {
+            if case .failed = connection?.state { return true }
+            return false
+        }()
 
         HStack(spacing: 12) {
-            BatteryIcon(soc: stats?.stateOfCharge, charging: stats?.isCharging == true)
-                .frame(width: 28)
+            if failed {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .frame(width: 28)
+            } else {
+                BatteryIcon(soc: stats?.stateOfCharge, charging: stats?.isCharging == true)
+                    .frame(width: 28)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(battery.name).font(.headline)
-                if let stats {
+                if failed {
+                    Text("Tap to retry")
+                        .font(.caption).foregroundStyle(.red)
+                } else if let stats {
                     Text("\(Format.volts(stats.voltage)) · \(Format.amps(stats.current))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -124,12 +163,17 @@ private struct BatteryRow: View {
                 }
             }
             Spacer()
-            if let stats {
+            if failed {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+            } else if let stats {
                 Text(Format.percent(stats.stateOfCharge))
                     .font(.title3).bold().monospacedDigit()
             }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
     }
 
     private func connectionStateLabel(_ state: ConnectionState?) -> String {
@@ -143,9 +187,47 @@ private struct BatteryRow: View {
     }
 }
 
+private struct GroupRowLink: View {
+    @EnvironmentObject private var ble: BLEManager
+    let group: BatteryGroup
+
+    private var failedMembers: [Battery] {
+        group.batteries.filter { battery in
+            if case .failed = ble.connection(for: battery.peripheralIdentifier)?.state {
+                return true
+            }
+            return false
+        }
+    }
+
+    var body: some View {
+        if !failedMembers.isEmpty {
+            Button {
+                for battery in failedMembers {
+                    if let conn = ble.connection(for: battery.peripheralIdentifier) {
+                        conn.reconnect()
+                    } else {
+                        ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
+                    }
+                }
+            } label: {
+                GroupRow(group: group, failedCount: failedMembers.count)
+            }
+            .buttonStyle(.plain)
+        } else {
+            NavigationLink {
+                GroupDetailView(group: group)
+            } label: {
+                GroupRow(group: group, failedCount: 0)
+            }
+        }
+    }
+}
+
 private struct GroupRow: View {
     @EnvironmentObject private var ble: BLEManager
     let group: BatteryGroup
+    let failedCount: Int
 
     private var aggregateStats: BatteryStats? {
         let collected: [BatteryStats] = group.batteries.compactMap {
@@ -157,17 +239,33 @@ private struct GroupRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: group.configuration == .series ? "rectangle.connected.to.line.below" : "rectangle.3.group.fill")
-                .font(.title2)
-                .foregroundStyle(.tint)
-                .frame(width: 28)
+            if failedCount > 0 {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+                    .frame(width: 28)
+            } else {
+                Image(systemName: group.configuration == .series ? "rectangle.connected.to.line.below" : "rectangle.3.group.fill")
+                    .font(.title2)
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(group.name).font(.headline)
-                Text("\(group.configuration.displayName) · \(group.batteries.count) batteries")
-                    .font(.caption).foregroundStyle(.secondary)
+                if failedCount > 0 {
+                    Text("\(failedCount) of \(group.batteries.count) failed · tap to retry")
+                        .font(.caption).foregroundStyle(.red)
+                } else {
+                    Text("\(group.configuration.displayName) · \(group.batteries.count) batteries")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
             Spacer()
-            if let s = aggregateStats {
+            if failedCount > 0 {
+                Image(systemName: "arrow.clockwise.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+            } else if let s = aggregateStats {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(Format.percent(s.stateOfCharge)).font(.headline).monospacedDigit()
                     Text(Format.volts(s.voltage)).font(.caption).foregroundStyle(.secondary).monospacedDigit()
@@ -175,6 +273,7 @@ private struct GroupRow: View {
             }
         }
         .padding(.vertical, 2)
+        .contentShape(Rectangle())
     }
 }
 
