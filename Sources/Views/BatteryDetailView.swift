@@ -48,9 +48,6 @@ struct BatteryDetailView: View {
                 groupSection
                     .padding(.horizontal)
 
-                manualCommandsSection
-                    .padding(.horizontal)
-
                 DisclosureGroup("Diagnostics", isExpanded: $showDiagnostics) {
                     diagnosticsContent
                 }
@@ -63,20 +60,55 @@ struct BatteryDetailView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Rename") { editingName = true }
+                    Button {
+                        editingName = true
+                    } label: {
+                        Label("Rename", systemImage: "pencil")
+                    }
+
                     if connection?.state == .ready || connection?.state == .connecting {
-                        Button("Disconnect") {
+                        Button {
                             ble.disconnect(savedIdentifier: battery.peripheralIdentifier)
+                        } label: {
+                            Label("Disconnect", systemImage: "wifi.slash")
                         }
                     } else {
-                        Button("Connect") {
+                        Button {
                             ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
+                        } label: {
+                            Label("Connect", systemImage: "wifi")
                         }
                     }
-                    Button("Reconnect") {
+                    Button {
                         connection?.reconnect()
+                    } label: {
+                        Label("Reconnect", systemImage: "arrow.clockwise")
                     }
+
                     Divider()
+
+                    if let connection {
+                        Button {
+                            connection.sendBasicInfoNow()
+                        } label: {
+                            Label("Refresh basic info", systemImage: "info.circle")
+                        }
+                        Button {
+                            connection.sendCellVoltagesNow()
+                        } label: {
+                            Label("Refresh cells", systemImage: "square.grid.3x1.below.line.grid.1x2")
+                        }
+                        Button {
+                            connection.setPolling(!connection.pollEnabled)
+                        } label: {
+                            Label(
+                                connection.pollEnabled ? "Pause auto-poll" : "Resume auto-poll",
+                                systemImage: connection.pollEnabled ? "pause.circle" : "play.circle"
+                            )
+                        }
+                        Divider()
+                    }
+
                     Button(role: .destructive) {
                         ble.disconnect(savedIdentifier: battery.peripheralIdentifier)
                         modelContext.delete(battery)
@@ -161,43 +193,6 @@ struct BatteryDetailView: View {
                 }
             }
             .pickerStyle(.menu)
-        }
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var manualCommandsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Manual commands").font(.headline)
-            HStack(spacing: 12) {
-                Button {
-                    connection?.sendBasicInfoNow()
-                } label: {
-                    Label("Basic info", systemImage: "info.circle")
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    connection?.sendCellVoltagesNow()
-                } label: {
-                    Label("Cells", systemImage: "square.grid.3x1.below.line.grid.1x2")
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    connection?.reconnect()
-                } label: {
-                    Label("Reconnect", systemImage: "arrow.clockwise")
-                }
-                .buttonStyle(.bordered)
-            }
-            if let connection {
-                Toggle("Auto-poll every 3s", isOn: Binding(
-                    get: { connection.pollEnabled },
-                    set: { connection.setPolling($0) }
-                ))
-                .font(.callout)
-            }
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
