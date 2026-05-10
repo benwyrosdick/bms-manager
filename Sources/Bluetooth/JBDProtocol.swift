@@ -69,6 +69,22 @@ enum JBDProtocol {
         return (cmd, Data(payload))
     }
 
+    /// Decode the `0x04` response payload into per-cell voltages (volts).
+    /// Payload is N × big-endian uint16 millivolts.
+    static func decodeCellVoltages(payload p: Data) throws -> [Double] {
+        guard p.count >= 2, p.count.isMultiple(of: 2) else { throw DecodeError.truncated }
+        let bytes = Array(p)
+        var cells: [Double] = []
+        cells.reserveCapacity(bytes.count / 2)
+        var i = 0
+        while i + 1 < bytes.count {
+            let mv = (UInt16(bytes[i]) << 8) | UInt16(bytes[i + 1])
+            cells.append(Double(mv) / 1000.0)
+            i += 2
+        }
+        return cells
+    }
+
     static func decodeBasicInfo(payload p: Data) throws -> BasicInfo {
         guard p.count >= 23 else { throw DecodeError.truncated }
         let bytes = Array(p)

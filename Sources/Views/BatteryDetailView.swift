@@ -31,6 +31,11 @@ struct BatteryDetailView: View {
                             .padding(.horizontal)
                     }
 
+                    if let connection, !connection.cellVoltages.isEmpty {
+                        CellGridView(cells: connection.cellVoltages, updatedAt: connection.cellsUpdatedAt)
+                            .padding(.horizontal)
+                    }
+
                     Text("Updated \(stats.timestamp.formatted(.relative(presentation: .named)))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)

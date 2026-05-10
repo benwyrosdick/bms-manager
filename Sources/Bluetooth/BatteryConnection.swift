@@ -24,6 +24,8 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
 
     @Published private(set) var state: ConnectionState = .disconnected
     @Published private(set) var stats: BatteryStats?
+    @Published private(set) var cellVoltages: [Double] = []
+    @Published private(set) var cellsUpdatedAt: Date?
     @Published private(set) var lastError: String?
     @Published private(set) var discoveredServices: [DiscoveredService] = []
     @Published private(set) var matchedServiceUUID: CBUUID?
@@ -135,9 +137,22 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
             guard let self else { return }
             while !Task.isCancelled {
                 self.requestBasicInfo()
-                try? await Task.sleep(nanoseconds: UInt64(self.pollInterval * 1_000_000_000))
+                // Stagger the cell-voltages request so the two writes don't
+                // collide in the BMS's small input buffer.
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                if Task.isCancelled { return }
+                self.requestCellVoltages()
+                try? await Task.sleep(nanoseconds: UInt64((self.pollInterval - 0.4) * 1_000_000_000))
             }
         }
+    }
+
+    private func requestCellVoltages() {
+        guard let writeCharacteristic else { return }
+        let type = writeType(for: writeCharacteristic)
+        log.log("→ cell voltages cmd: \(JBDProtocol.cellVoltagesCommand.hexLog)",
+                level: .debug, category: .write, peripheral: peripheralIDString)
+        peripheral.writeValue(JBDProtocol.cellVoltagesCommand, for: writeCharacteristic, type: type)
     }
 
     private func requestBasicInfo() {
@@ -176,7 +191,14 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
                 log.log("Basic info: \(String(format: "%.2fV %+.2fA %.0f%% cycles=%d", info.totalVoltage, info.current, info.stateOfCharge, info.cycleCount))",
                         category: .frame, peripheral: peripheralIDString)
             case 0x04:
-                log.log("Cell voltages payload (\(payload.count)B): \(payload.hexLog)",
+                let cells = try JBDProtocol.decodeCellVoltages(payload: payload)
+                cellVoltages = cells
+                cellsUpdatedAt = .now
+                let mn = cells.min() ?? 0
+                let mx = cells.max() ?? 0
+                log.log(String(format: "Cells: %d × avg=%.3fV min=%.3fV max=%.3fV Δ=%.3fV",
+                               cells.count, cells.reduce(0, +) / Double(max(cells.count, 1)),
+                               mn, mx, mx - mn),
                         category: .frame, peripheral: peripheralIDString)
             default:
                 log.log("Unhandled cmd 0x\(String(cmd, radix: 16)) (\(payload.count)B)",
@@ -260,13 +282,16 @@ extension BatteryConnection: CBPeripheralDelegate {
                 self.notifyCharacteristic = notifyCh
                 self.writeCharacteristic = writeCh
                 self.matchedServiceUUID = service.uuid
-                peripheral.setNotifyValue(true, for: notifyCh)
                 self.log.log(
                     "Bound service \(service.uuid.uuidString): notify=\(notifyCh.uuid.uuidString), write=\(writeCh.uuid.uuidString)",
                     category: .discover, peripheral: self.peripheralIDString
                 )
-                self.state = .ready
-                self.startPolling()
+                // Subscribe to notifications. We deliberately DO NOT mark .ready
+                // or start polling yet — wait for didUpdateNotificationStateFor
+                // to confirm isNotifying=true, otherwise the BMS firmware may
+                // process our read command before it has acknowledged the CCCD
+                // write, and the response notify is dropped on the floor.
+                peripheral.setNotifyValue(true, for: notifyCh)
             }
         }
     }
@@ -278,16 +303,27 @@ extension BatteryConnection: CBPeripheralDelegate {
     ) {
         let id = peripheral.identifier.uuidString
         let cuuid = characteristic.uuid.uuidString
+        let isNotifying = characteristic.isNotifying
         if let error {
             Task { @MainActor in
                 self.log.log("Notify subscribe error on \(cuuid): \(error.localizedDescription)",
                              level: .error, category: .notify, peripheral: id)
+                self.state = .failed(error.localizedDescription)
             }
-        } else {
-            Task { @MainActor in
-                self.log.log("Notify subscribed on \(cuuid) (isNotifying=\(characteristic.isNotifying))",
-                             category: .notify, peripheral: id)
-            }
+            return
+        }
+        Task { @MainActor in
+            self.log.log("Notify subscribed on \(cuuid) (isNotifying=\(isNotifying))",
+                         category: .notify, peripheral: id)
+            // Only flip to ready and start polling once the CCCD write has
+            // been acknowledged by the peripheral.
+            guard isNotifying,
+                  self.notifyCharacteristic?.uuid == characteristic.uuid else { return }
+            self.state = .ready
+            // Brief grace period — some BMS firmwares need a moment after
+            // ACKing the CCCD before they're ready to answer a read.
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            self.startPolling()
         }
     }
 
