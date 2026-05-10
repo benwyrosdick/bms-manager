@@ -37,10 +37,10 @@ final class BLELogger: ObservableObject {
         }
     }
 
-    // DateFormatter is thread-safe for reads on iOS 7+; the nonisolated(unsafe)
-    // marker lets Entry.formattedTime (a non-isolated nested struct) reach it
-    // without an actor hop.
-    nonisolated(unsafe) private static let timeFormatter: DateFormatter = {
+    // nonisolated lets Entry.formattedTime (a non-isolated nested struct)
+    // reach this static without an actor hop. DateFormatter is Sendable in
+    // current SDKs so the `(unsafe)` qualifier is no longer needed.
+    nonisolated private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateFormat = "HH:mm:ss.SSS"
         return f
