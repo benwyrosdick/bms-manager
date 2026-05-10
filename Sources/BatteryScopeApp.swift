@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct BMSManagerApp: App {
+struct BatteryScopeApp: App {
     @StateObject private var ble = BLEManager()
 
     var body: some Scene {

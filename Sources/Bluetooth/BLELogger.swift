@@ -46,7 +46,7 @@ final class BLELogger: ObservableObject {
         return f
     }()
 
-    private static let osLog = Logger(subsystem: "com.benwyrosdick.bmsmanager", category: "ble")
+    private static let osLog = Logger(subsystem: "com.benwyrosdick.battery-monitor", category: "ble")
 
     @Published private(set) var entries: [Entry] = []
     private let limit = 500

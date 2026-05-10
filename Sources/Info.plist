@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>BMS Manager</string>
+	<string>BatteryScope</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -23,9 +23,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>BMS Manager uses Bluetooth to read live data from your battery management systems.</string>
+	<string>BatteryScope uses Bluetooth to read live data from your battery management systems.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>BMS Manager uses Bluetooth to read live data from your battery management systems.</string>
+	<string>BatteryScope uses Bluetooth to read live data from your battery management systems.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -68,7 +68,7 @@ struct ScannerView: View {
         case .poweredOff:
             BannerView(text: "Bluetooth is off. Enable it in Settings.", tint: .orange)
         case .unauthorized:
-            BannerView(text: "BMS Manager doesn't have Bluetooth permission. Enable it in Settings.", tint: .red)
+            BannerView(text: "BatteryScope doesn't have Bluetooth permission. Enable it in Settings.", tint: .red)
         case .unsupported:
             BannerView(text: "This device doesn't support Bluetooth LE.", tint: .red)
         case .resetting, .unknown:

@@ -1,5 +1,5 @@
 #!/usr/bin/env swift
-// Renders the BMS Manager app icon to a 1024×1024 PNG.
+// Renders the BatteryScope app icon to a 1024×1024 PNG.
 //
 // Usage:
 //   swift Tools/GenerateIcon.swift Sources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png

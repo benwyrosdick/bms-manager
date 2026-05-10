@@ -1,4 +1,4 @@
-name: BMSManager
+name: BatteryScope
 options:
   bundleIdPrefix: com.benwyrosdick
   deploymentTarget:
@@ -13,14 +13,14 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
-  BMSManager:
+  BatteryScope:
     type: application
     platform: iOS
     sources:
       - path: Sources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.benwyrosdick.bmsmanager
+        PRODUCT_BUNDLE_IDENTIFIER: com.benwyrosdick.battery-monitor
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
         # Use the hand-maintained Sources/Info.plist directly.

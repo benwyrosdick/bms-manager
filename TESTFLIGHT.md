@@ -1,4 +1,4 @@
-# Shipping BMS Manager to TestFlight
+# Shipping BatteryScope to TestFlight
 
 A practical runbook. Assumes you have a paid Apple Developer Program membership.
 
@@ -6,12 +6,12 @@ A practical runbook. Assumes you have a paid Apple Developer Program membership.
 
 ### 1. Bundle ID
 1. https://developer.apple.com/account → **Certificates, Identifiers & Profiles** → Identifiers → "+"
-2. App IDs → App → Bundle ID `com.benwyrosdick.bmsmanager` (Explicit)
+2. App IDs → App → Bundle ID `com.benwyrosdick.battery-monitor` (Explicit)
 3. Capabilities: leave defaults. Bluetooth doesn't need a capability entitlement, just the Info.plist usage description.
 
 ### 2. App Store Connect record
 1. https://appstoreconnect.apple.com → My Apps → "+" → New App
-2. iOS, name "BMS Manager", primary language, SKU (any unique string), full access
+2. iOS, name "BatteryScope", primary language, SKU (any unique string), full access
 3. Pick the Bundle ID you just registered
 
 ### 3. App icon
@@ -26,10 +26,10 @@ App Information → App Privacy → Get Started
 - If asked about Bluetooth: "App Functionality" purpose
 
 ### 5. Xcode signing
-Open the project → BMSManager target → Signing & Capabilities
+Open the project → BatteryScope target → Signing & Capabilities
 - ✓ Automatically manage signing
 - Team: your paid Developer team (not "Personal")
-- Bundle Identifier: `com.benwyrosdick.bmsmanager`
+- Bundle Identifier: `com.benwyrosdick.battery-monitor`
 
 ## For every build
 
@@ -58,7 +58,7 @@ Build numbers must monotonically increase per `CFBundleShortVersionString`. App 
 4. You'll get an email when the build is ready or rejected
 
 ### 4. TestFlight metadata (first build only)
-appstoreconnect.apple.com → My Apps → BMS Manager → TestFlight tab
+appstoreconnect.apple.com → My Apps → BatteryScope → TestFlight tab
 - **Test Information**: feedback email, marketing URL (optional), privacy policy URL (required for external testing)
 - **What to Test**: describe what testers should poke at
 - **Beta App Description**: short description
@@ -79,7 +79,7 @@ appstoreconnect.apple.com → My Apps → BMS Manager → TestFlight tab
 
 External TestFlight needs one. If you don't have a domain, a public GitHub repo with a `PRIVACY.md` rendered URL is acceptable. Minimal text:
 
-> BMS Manager stores battery configuration locally on your device. We do not collect, transmit, or share any personal data. Bluetooth is used solely to read live data from your battery management systems.
+> BatteryScope stores battery configuration locally on your device. We do not collect, transmit, or share any personal data. Bluetooth is used solely to read live data from your battery management systems.
 
 ## Bumping for first public release later
 
