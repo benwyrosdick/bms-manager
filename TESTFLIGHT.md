@@ -6,7 +6,7 @@ A practical runbook. Assumes you have a paid Apple Developer Program membership.
 
 ### 1. Bundle ID
 1. https://developer.apple.com/account → **Certificates, Identifiers & Profiles** → Identifiers → "+"
-2. App IDs → App → Bundle ID `com.vesyl.bmsmanager` (Explicit)
+2. App IDs → App → Bundle ID `com.benwyrosdick.bmsmanager` (Explicit)
 3. Capabilities: leave defaults. Bluetooth doesn't need a capability entitlement, just the Info.plist usage description.
 
 ### 2. App Store Connect record
@@ -29,7 +29,7 @@ App Information → App Privacy → Get Started
 Open the project → BMSManager target → Signing & Capabilities
 - ✓ Automatically manage signing
 - Team: your paid Developer team (not "Personal")
-- Bundle Identifier: `com.vesyl.bmsmanager`
+- Bundle Identifier: `com.benwyrosdick.bmsmanager`
 
 ## For every build
 

@@ -1,6 +1,6 @@
 name: BMSManager
 options:
-  bundleIdPrefix: com.vesyl
+  bundleIdPrefix: com.benwyrosdick
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -20,7 +20,7 @@ targets:
       - path: Sources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.vesyl.bmsmanager
+        PRODUCT_BUNDLE_IDENTIFIER: com.benwyrosdick.bmsmanager
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
         # Use the hand-maintained Sources/Info.plist directly.
