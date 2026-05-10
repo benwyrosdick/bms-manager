@@ -16,6 +16,8 @@ enum JBDProtocol {
 
     static let basicInfoCommand: Data = Data([0xDD, 0xA5, 0x03, 0x00, 0xFF, 0xFD, 0x77])
     static let cellVoltagesCommand: Data = Data([0xDD, 0xA5, 0x04, 0x00, 0xFF, 0xFC, 0x77])
+    /// Hardware info — returns ASCII string like "JBD-SP04S001 V2.6".
+    static let hardwareInfoCommand: Data = Data([0xDD, 0xA5, 0x05, 0x00, 0xFF, 0xFB, 0x77])
 
     enum DecodeError: Error {
         case truncated

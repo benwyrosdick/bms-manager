@@ -48,6 +48,11 @@ struct BatteryDetailView: View {
                 groupSection
                     .padding(.horizontal)
 
+                if let info = connection?.deviceInfo, !info.isEmpty {
+                    DeviceInfoSection(info: info)
+                        .padding(.horizontal)
+                }
+
                 DisclosureGroup("Diagnostics", isExpanded: $showDiagnostics) {
                     diagnosticsContent
                 }
@@ -235,6 +240,47 @@ struct BatteryDetailView: View {
             }
         }
         .padding(.top, 8)
+    }
+}
+
+private struct DeviceInfoSection: View {
+    let info: DeviceInfo
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Device").font(.headline)
+            VStack(spacing: 0) {
+                row("Manufacturer", info.manufacturer)
+                row("Model", info.modelNumber)
+                row("Serial", info.serialNumber)
+                row("Firmware", info.firmwareRevision)
+                row("Hardware", info.hardwareRevision)
+                row("Software", info.softwareRevision)
+                row("BMS module", info.bmsHardwareVersion)
+                if let pnp = info.pnpId {
+                    row("PnP ID", pnp.hexLog)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private func row(_ label: String, _ value: String?) -> some View {
+        if let value, !value.isEmpty {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(width: 100, alignment: .leading)
+                Text(value)
+                    .font(.callout).fontWeight(.medium)
+                    .textSelection(.enabled)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+            }
+            .padding(.vertical, 4)
+        }
     }
 }
 

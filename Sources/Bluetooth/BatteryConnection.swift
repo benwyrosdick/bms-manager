@@ -16,6 +16,23 @@ struct DiscoveredService: Identifiable, Equatable {
     let characteristicUUIDs: [CBUUID]
 }
 
+struct DeviceInfo: Equatable {
+    var manufacturer: String?       // 0x2A29
+    var modelNumber: String?        // 0x2A24
+    var serialNumber: String?       // 0x2A25
+    var firmwareRevision: String?   // 0x2A26
+    var hardwareRevision: String?   // 0x2A27
+    var softwareRevision: String?   // 0x2A28
+    var pnpId: Data?                // 0x2A50 (raw 7-byte struct)
+    var bmsHardwareVersion: String? // JBD 0x05 response
+
+    var isEmpty: Bool {
+        manufacturer == nil && modelNumber == nil && serialNumber == nil
+            && firmwareRevision == nil && hardwareRevision == nil
+            && softwareRevision == nil && pnpId == nil && bmsHardwareVersion == nil
+    }
+}
+
 @MainActor
 final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     nonisolated let peripheral: CBPeripheral
@@ -26,11 +43,14 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     @Published private(set) var stats: BatteryStats?
     @Published private(set) var cellVoltages: [Double] = []
     @Published private(set) var cellsUpdatedAt: Date?
+    @Published private(set) var deviceInfo = DeviceInfo()
     @Published private(set) var lastError: String?
     @Published private(set) var discoveredServices: [DiscoveredService] = []
     @Published private(set) var matchedServiceUUID: CBUUID?
     @Published private(set) var lastFrameBytes: Data?
     @Published private(set) var pollEnabled: Bool = true
+
+    private var hasFetchedHardwareInfo = false
 
     private weak var central: CBCentralManager?
     private var writeCharacteristic: CBCharacteristic?
@@ -116,6 +136,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
         writeCharacteristic = nil
         notifyCharacteristic = nil
         matchedServiceUUID = nil
+        hasFetchedHardwareInfo = false
         if let error {
             state = .failed(error.localizedDescription)
             lastError = error.localizedDescription
@@ -133,6 +154,10 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     private func startPolling() {
         pollTask?.cancel()
         guard pollEnabled else { return }
+        if !hasFetchedHardwareInfo {
+            hasFetchedHardwareInfo = true
+            requestHardwareInfo()
+        }
         pollTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
@@ -153,6 +178,34 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
         log.log("→ cell voltages cmd: \(JBDProtocol.cellVoltagesCommand.hexLog)",
                 level: .debug, category: .write, peripheral: peripheralIDString)
         peripheral.writeValue(JBDProtocol.cellVoltagesCommand, for: writeCharacteristic, type: type)
+    }
+
+    /// Maps a value-update on a Device Information Service characteristic to
+    /// the right `deviceInfo` field. Returns true if the UUID was recognized.
+    private func applyDeviceInfoUpdate(uuid: CBUUID, data: Data) -> Bool {
+        let str = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+        switch uuid.uuidString.uppercased() {
+        case "2A29": deviceInfo.manufacturer = str
+        case "2A24": deviceInfo.modelNumber = str
+        case "2A25": deviceInfo.serialNumber = str
+        case "2A26": deviceInfo.firmwareRevision = str
+        case "2A27": deviceInfo.hardwareRevision = str
+        case "2A28": deviceInfo.softwareRevision = str
+        case "2A50": deviceInfo.pnpId = data
+        default: return false
+        }
+        log.log("DIS \(uuid.uuidString): \(str ?? data.hexLog)",
+                category: .frame, peripheral: peripheralIDString)
+        return true
+    }
+
+    private func requestHardwareInfo() {
+        guard let writeCharacteristic else { return }
+        let type = writeType(for: writeCharacteristic)
+        log.log("→ hardware info cmd: \(JBDProtocol.hardwareInfoCommand.hexLog)",
+                level: .debug, category: .write, peripheral: peripheralIDString)
+        peripheral.writeValue(JBDProtocol.hardwareInfoCommand, for: writeCharacteristic, type: type)
     }
 
     private func requestBasicInfo() {
@@ -200,6 +253,13 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
                                cells.count, cells.reduce(0, +) / Double(max(cells.count, 1)),
                                mn, mx, mx - mn),
                         category: .frame, peripheral: peripheralIDString)
+            case 0x05:
+                let str = String(data: payload, encoding: .ascii)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
+                if let str, !str.isEmpty {
+                    deviceInfo.bmsHardwareVersion = str
+                    log.log("BMS hardware: \(str)", category: .frame, peripheral: peripheralIDString)
+                }
             default:
                 log.log("Unhandled cmd 0x\(String(cmd, radix: 16)) (\(payload.count)B)",
                         level: .warn, category: .frame, peripheral: peripheralIDString)
@@ -256,6 +316,15 @@ extension BatteryConnection: CBPeripheralDelegate {
                 self.discoveredServices[idx] = entry
             } else {
                 self.discoveredServices.append(entry)
+            }
+
+            // If this is the standard Device Information Service, read each
+            // readable characteristic so we can populate manufacturer / model /
+            // firmware fields without prompting the user.
+            if service.uuid == CBUUID(string: "180A") {
+                for ch in chars where ch.properties.contains(.read) {
+                    peripheral.readValue(for: ch)
+                }
             }
 
             // Try to bind notify + write within this service.
@@ -361,8 +430,14 @@ extension BatteryConnection: CBPeripheralDelegate {
         Task { @MainActor in
             self.log.log("← chunk \(data.count)B on \(cuuid.uuidString): \(data.hexLog)",
                          level: .debug, category: .notify, peripheral: id)
-            // Accept notifies on the bound notify characteristic only — but if we
-            // haven't bound one yet, accept any (helps debugging unfamiliar BMSes).
+
+            // Route Device Information Service reads into the deviceInfo struct.
+            if self.applyDeviceInfoUpdate(uuid: cuuid, data: data) {
+                return
+            }
+
+            // Otherwise treat as a JBD notify chunk on the bound notify char
+            // (or any char, if we haven't bound one yet — helpful for debugging).
             let acceptable = self.notifyCharacteristic.map { $0.uuid == cuuid } ?? true
             guard acceptable else { return }
             for frame in self.assembler.append(data) {
