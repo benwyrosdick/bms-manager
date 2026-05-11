@@ -12,7 +12,9 @@ struct DebugLogView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        let entries = filtered
+        let lastID = entries.last?.id
+        return NavigationStack {
             VStack(spacing: 0) {
                 filterBar
                     .padding(.horizontal)
@@ -22,14 +24,14 @@ struct DebugLogView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 4) {
-                            ForEach(filtered) { entry in
+                            ForEach(entries) { entry in
                                 LogRow(entry: entry).id(entry.id)
                             }
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 8)
                     }
-                    .onChange(of: filtered.last?.id) { _, newID in
+                    .onChange(of: lastID) { _, newID in
                         if autoscroll, let newID {
                             withAnimation(.linear(duration: 0.1)) {
                                 proxy.scrollTo(newID, anchor: .bottom)
@@ -63,7 +65,7 @@ struct DebugLogView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 FilterChip(label: "All", isOn: filter == nil) { filter = nil }
-                ForEach([BLELogger.Category.scan, .connect, .discover, .write, .notify, .frame, .app], id: \.rawValue) { cat in
+                ForEach(BLELogger.Category.allCases, id: \.rawValue) { cat in
                     FilterChip(label: cat.rawValue.capitalized, isOn: filter == cat) {
                         filter = (filter == cat) ? nil : cat
                     }

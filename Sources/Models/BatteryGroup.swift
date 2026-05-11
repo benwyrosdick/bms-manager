@@ -13,6 +13,13 @@ enum GroupConfiguration: String, Codable, CaseIterable, Identifiable {
         case .parallel: "Parallel"
         }
     }
+
+    var symbolName: String {
+        switch self {
+        case .series: "rectangle.connected.to.line.below"
+        case .parallel: "rectangle.3.group.fill"
+        }
+    }
 }
 
 @Model

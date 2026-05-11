@@ -98,18 +98,9 @@ private struct BatteryRowLink: View {
 
     var body: some View {
         let connection = ble.connection(for: battery.peripheralIdentifier)
-        let isFailed: Bool = {
-            if case .failed = connection?.state { return true }
-            return false
-        }()
-
-        if isFailed {
+        if connection?.state.isFailed == true {
             Button {
-                if let connection {
-                    connection.reconnect()
-                } else {
-                    ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
-                }
+                ble.reconnectOrOpen(savedIdentifier: battery.peripheralIdentifier)
             } label: {
                 BatteryRow(battery: battery)
             }
@@ -131,10 +122,7 @@ private struct BatteryRow: View {
     var body: some View {
         let connection = ble.connection(for: battery.peripheralIdentifier)
         let stats = connection?.stats
-        let failed: Bool = {
-            if case .failed = connection?.state { return true }
-            return false
-        }()
+        let failed = connection?.state.isFailed == true
 
         HStack(spacing: 12) {
             if failed {
@@ -157,7 +145,7 @@ private struct BatteryRow: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 } else {
-                    Text(connectionStateLabel(connection?.state))
+                    Text(connection?.state.displayLabel ?? "Offline")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -175,43 +163,23 @@ private struct BatteryRow: View {
         .padding(.vertical, 2)
         .contentShape(Rectangle())
     }
-
-    private func connectionStateLabel(_ state: ConnectionState?) -> String {
-        switch state {
-        case .connecting: "Connecting…"
-        case .discovering: "Discovering…"
-        case .ready: "Connected"
-        case .failed(let msg): "Error: \(msg)"
-        case .disconnected, nil: "Offline"
-        }
-    }
 }
 
 private struct GroupRowLink: View {
     @EnvironmentObject private var ble: BLEManager
     let group: BatteryGroup
 
-    private var failedMembers: [Battery] {
-        group.batteries.filter { battery in
-            if case .failed = ble.connection(for: battery.peripheralIdentifier)?.state {
-                return true
-            }
-            return false
-        }
-    }
-
     var body: some View {
-        if !failedMembers.isEmpty {
+        let failed = group.batteries.filter {
+            ble.connection(for: $0.peripheralIdentifier)?.state.isFailed == true
+        }
+        if !failed.isEmpty {
             Button {
-                for battery in failedMembers {
-                    if let conn = ble.connection(for: battery.peripheralIdentifier) {
-                        conn.reconnect()
-                    } else {
-                        ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
-                    }
+                for battery in failed {
+                    ble.reconnectOrOpen(savedIdentifier: battery.peripheralIdentifier)
                 }
             } label: {
-                GroupRow(group: group, failedCount: failedMembers.count)
+                GroupRow(group: group, failedCount: failed.count)
             }
             .buttonStyle(.plain)
         } else {
@@ -245,7 +213,7 @@ private struct GroupRow: View {
                     .foregroundStyle(.red)
                     .frame(width: 28)
             } else {
-                Image(systemName: group.configuration == .series ? "rectangle.connected.to.line.below" : "rectangle.3.group.fill")
+                Image(systemName: group.configuration.symbolName)
                     .font(.title2)
                     .foregroundStyle(.tint)
                     .frame(width: 28)

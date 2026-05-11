@@ -20,7 +20,7 @@ final class BLELogger: ObservableObject {
         }
     }
 
-    enum Category: String {
+    enum Category: String, CaseIterable {
         case scan, connect, discover, write, notify, frame, app
     }
 

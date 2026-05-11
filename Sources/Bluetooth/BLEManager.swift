@@ -23,6 +23,10 @@ final class BLEManager: NSObject, ObservableObject {
     private let staleInterval: TimeInterval = 15
     private var connectionObservers: [UUID: AnyCancellable] = [:]
     private let log = BLELogger.shared
+    // lastSeen is tracked off-band so it doesn't republish `discovered` on every
+    // advertising packet. pruneStale reads it on a 1Hz timer.
+    private var lastSeenByPeripheral: [UUID: Date] = [:]
+    private var pruneTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -39,6 +43,7 @@ final class BLEManager: NSObject, ObservableObject {
             return
         }
         discovered.removeAll()
+        lastSeenByPeripheral.removeAll()
         // Many BMS modules don't include FF00 in their advertisement, so scan
         // unfiltered and apply name/UUID heuristics in didDiscover.
         central.scanForPeripherals(
@@ -46,13 +51,26 @@ final class BLEManager: NSObject, ObservableObject {
             options: [CBCentralManagerScanOptionAllowDuplicatesKey: true]
         )
         isScanning = true
+        startPruneLoop()
         log.log("Scan started", category: .scan)
     }
 
     func stopScan() {
         central.stopScan()
         isScanning = false
+        pruneTask?.cancel()
+        pruneTask = nil
         log.log("Scan stopped", category: .scan)
+    }
+
+    private func startPruneLoop() {
+        pruneTask?.cancel()
+        pruneTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                self?.pruneStale()
+            }
+        }
     }
 
     // MARK: - Connections
@@ -116,6 +134,16 @@ final class BLEManager: NSObject, ObservableObject {
         prepareConnection(for: savedIdentifier)?.connect()
     }
 
+    /// If a connection already exists, ask it to reconnect (fast path that
+    /// reuses the CBPeripheral). Otherwise prepare + connect from scratch.
+    func reconnectOrOpen(savedIdentifier: String) {
+        if let connection = connection(for: savedIdentifier) {
+            connection.reconnect()
+        } else {
+            openAndConnect(savedIdentifier: savedIdentifier)
+        }
+    }
+
     func disconnect(savedIdentifier: String) {
         guard let uuid = UUID(uuidString: savedIdentifier) else { return }
         connections[uuid]?.disconnect()
@@ -139,20 +167,39 @@ final class BLEManager: NSObject, ObservableObject {
         rssi: Int,
         services: [CBUUID]
     ) {
-        let entry = DiscoveredPeripheral(
-            peripheral: peripheral,
-            name: name,
-            rssi: rssi,
-            advertisedServices: services,
-            lastSeen: .now
-        )
-        if let idx = discovered.firstIndex(where: { $0.id == entry.id }) {
-            // RSSI fluctuates on every advertising packet; updating in place
-            // preserves the existing sort order so the list doesn't reshuffle.
-            discovered[idx] = entry
+        // Always refresh staleness (off-band, no @Published churn).
+        lastSeenByPeripheral[peripheral.identifier] = .now
+
+        if let idx = discovered.firstIndex(where: { $0.id == peripheral.identifier }) {
+            // Only republish the array if user-visible fields changed. RSSI is
+            // bucketed to ±5 dBm to absorb the per-packet noise that makes the
+            // shown value jitter on every advertising tick.
+            let existing = discovered[idx]
+            let bucketedNew = (rssi / 5) * 5
+            let bucketedOld = (existing.rssi / 5) * 5
+            let materialChange =
+                existing.name != name
+                || bucketedNew != bucketedOld
+                || existing.advertisedServices != services
+            if materialChange {
+                discovered[idx] = DiscoveredPeripheral(
+                    peripheral: peripheral,
+                    name: name,
+                    rssi: rssi,
+                    advertisedServices: services,
+                    lastSeen: .now
+                )
+            }
         } else {
             // Insert in name-sorted order so the view can iterate `discovered`
             // directly without re-sorting on every render.
+            let entry = DiscoveredPeripheral(
+                peripheral: peripheral,
+                name: name,
+                rssi: rssi,
+                advertisedServices: services,
+                lastSeen: .now
+            )
             let insertIdx = discovered.firstIndex(where: { sortsAfter(entry, $0) }) ?? discovered.endIndex
             discovered.insert(entry, at: insertIdx)
             log.log(
@@ -161,7 +208,6 @@ final class BLEManager: NSObject, ObservableObject {
                 peripheral: peripheral.identifier.uuidString
             )
         }
-        pruneStale()
     }
 
     /// Stable name-then-UUID ordering. Returns true if `a` should be placed
@@ -174,7 +220,16 @@ final class BLEManager: NSObject, ObservableObject {
 
     private func pruneStale() {
         let cutoff = Date().addingTimeInterval(-staleInterval)
-        discovered.removeAll { $0.lastSeen < cutoff }
+        // Find stale IDs first, then only mutate `discovered` if there's
+        // anything to remove — avoids a no-op `removeAll` that would still
+        // republish the array.
+        let stale = lastSeenByPeripheral.compactMap { $0.value < cutoff ? $0.key : nil }
+        guard !stale.isEmpty else { return }
+        for id in stale { lastSeenByPeripheral.removeValue(forKey: id) }
+        let staleSet = Set(stale)
+        if discovered.contains(where: { staleSet.contains($0.id) }) {
+            discovered.removeAll { staleSet.contains($0.id) }
+        }
     }
 }
 

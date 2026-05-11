@@ -8,6 +8,21 @@ enum ConnectionState: Equatable {
     case discovering
     case ready
     case failed(String)
+
+    var isFailed: Bool {
+        if case .failed = self { true } else { false }
+    }
+
+    /// Short label suitable for row subtitles and detail headers.
+    var displayLabel: String {
+        switch self {
+        case .connecting: "Connecting…"
+        case .discovering: "Discovering…"
+        case .ready: "Connected"
+        case .failed(let msg): "Error: \(msg)"
+        case .disconnected: "Offline"
+        }
+    }
 }
 
 struct DiscoveredService: Identifiable, Equatable {
@@ -211,14 +226,14 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     private func applyDeviceInfoUpdate(uuid: CBUUID, data: Data) -> Bool {
         let str = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines.union(.controlCharacters))
-        switch uuid.uuidString.uppercased() {
-        case "2A29": deviceInfo.manufacturer = str
-        case "2A24": deviceInfo.modelNumber = str
-        case "2A25": deviceInfo.serialNumber = str
-        case "2A26": deviceInfo.firmwareRevision = str
-        case "2A27": deviceInfo.hardwareRevision = str
-        case "2A28": deviceInfo.softwareRevision = str
-        case "2A50": deviceInfo.pnpId = data
+        switch uuid {
+        case DeviceInformationService.manufacturer:     deviceInfo.manufacturer = str
+        case DeviceInformationService.modelNumber:      deviceInfo.modelNumber = str
+        case DeviceInformationService.serialNumber:     deviceInfo.serialNumber = str
+        case DeviceInformationService.firmwareRevision: deviceInfo.firmwareRevision = str
+        case DeviceInformationService.hardwareRevision: deviceInfo.hardwareRevision = str
+        case DeviceInformationService.softwareRevision: deviceInfo.softwareRevision = str
+        case DeviceInformationService.pnpId:            deviceInfo.pnpId = data
         default: return false
         }
         log.log("DIS \(uuid.uuidString): \(str ?? data.hexLog)",
@@ -354,7 +369,7 @@ extension BatteryConnection: CBPeripheralDelegate {
             // If this is the standard Device Information Service, read each
             // readable characteristic so we can populate manufacturer / model /
             // firmware fields without prompting the user.
-            if service.uuid == CBUUID(string: "180A") {
+            if service.uuid == DeviceInformationService.serviceUUID {
                 for ch in chars where ch.properties.contains(.read) {
                     peripheral.readValue(for: ch)
                 }

@@ -7,30 +7,25 @@ struct GroupDetailView: View {
     @Bindable var group: BatteryGroup
     @State private var editing = false
 
-    private var collectedStats: [BatteryStats] {
-        group.batteries.compactMap { ble.connection(for: $0.peripheralIdentifier)?.stats }
-    }
-
-    private var aggregate: BatteryStats? {
-        let stats = collectedStats
-        guard stats.count == group.batteries.count, !stats.isEmpty else { return nil }
-        return stats.aggregated(as: group.configuration)
-    }
-
     var body: some View {
-        ScrollView {
+        let collected = group.batteries.compactMap { ble.connection(for: $0.peripheralIdentifier)?.stats }
+        let aggregate: BatteryStats? = {
+            guard collected.count == group.batteries.count, !collected.isEmpty else { return nil }
+            return collected.aggregated(as: group.configuration)
+        }()
+
+        return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                header
+                header(stats: aggregate)
 
                 if let stats = aggregate {
                     SOCBar(percent: stats.stateOfCharge, height: 16).padding(.horizontal)
                     StatGrid(stats: stats).padding(.horizontal)
                 } else {
-                    Text("Waiting for all member batteries to connect (\(collectedStats.count)/\(group.batteries.count))…")
+                    Text("Waiting for all member batteries to connect (\(collected.count)/\(group.batteries.count))…")
                         .font(.subheadline).foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                        .cardStyle()
                         .padding(.horizontal)
                 }
 
@@ -56,18 +51,13 @@ struct GroupDetailView: View {
         }
     }
 
-    private var header: some View {
+    private func header(stats: BatteryStats?) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
-                Label(
-                    group.configuration.displayName,
-                    systemImage: group.configuration == .series
-                        ? "rectangle.connected.to.line.below"
-                        : "rectangle.3.group.fill"
-                )
+                Label(group.configuration.displayName, systemImage: group.configuration.symbolName)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                if let stats = aggregate {
+                if let stats {
                     Text(Format.percent(stats.stateOfCharge))
                         .font(.system(size: 36, weight: .bold)).monospacedDigit()
                     Text(stats.isCharging ? "Charging" : (stats.isDischarging ? "Discharging" : "Idle"))
@@ -86,18 +76,9 @@ private struct MemberRowLink: View {
 
     var body: some View {
         let connection = ble.connection(for: battery.peripheralIdentifier)
-        let isFailed: Bool = {
-            if case .failed = connection?.state { return true }
-            return false
-        }()
-
-        if isFailed {
+        if connection?.state.isFailed == true {
             Button {
-                if let connection {
-                    connection.reconnect()
-                } else {
-                    ble.openAndConnect(savedIdentifier: battery.peripheralIdentifier)
-                }
+                ble.reconnectOrOpen(savedIdentifier: battery.peripheralIdentifier)
             } label: {
                 MemberRow(battery: battery)
             }
@@ -120,10 +101,7 @@ private struct MemberRow: View {
     var body: some View {
         let connection = ble.connection(for: battery.peripheralIdentifier)
         let stats = connection?.stats
-        let failed: Bool = {
-            if case .failed = connection?.state { return true }
-            return false
-        }()
+        let failed = connection?.state.isFailed == true
 
         HStack(spacing: 12) {
             if failed {
@@ -156,8 +134,7 @@ private struct MemberRow: View {
                 Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
             }
         }
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
         .contentShape(Rectangle())
     }
 }

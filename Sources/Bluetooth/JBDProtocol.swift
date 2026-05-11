@@ -13,6 +13,22 @@ enum JBDProtocol {
     static let serviceUUID = CBUUID(string: "FF00")
     static let notifyCharacteristicUUID = CBUUID(string: "FF01")
     static let writeCharacteristicUUID = CBUUID(string: "FF02")
+}
+
+/// Standard BLE GATT "Device Information Service" (0x180A) and its known
+/// characteristics. Used to surface manufacturer / model / firmware in the UI.
+enum DeviceInformationService {
+    static let serviceUUID = CBUUID(string: "180A")
+    static let manufacturer = CBUUID(string: "2A29")
+    static let modelNumber = CBUUID(string: "2A24")
+    static let serialNumber = CBUUID(string: "2A25")
+    static let firmwareRevision = CBUUID(string: "2A26")
+    static let hardwareRevision = CBUUID(string: "2A27")
+    static let softwareRevision = CBUUID(string: "2A28")
+    static let pnpId = CBUUID(string: "2A50")
+}
+
+extension JBDProtocol {
 
     static let basicInfoCommand: Data = Data([0xDD, 0xA5, 0x03, 0x00, 0xFF, 0xFD, 0x77])
     static let cellVoltagesCommand: Data = Data([0xDD, 0xA5, 0x04, 0x00, 0xFF, 0xFC, 0x77])

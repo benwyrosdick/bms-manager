@@ -164,13 +164,7 @@ struct BatteryDetailView: View {
     }
 
     private var stateLabel: String {
-        switch connection?.state {
-        case .connecting: "Connecting…"
-        case .discovering: "Discovering…"
-        case .ready: "Connected"
-        case .failed(let msg): "Error: \(msg)"
-        case .disconnected, nil: "Offline"
-        }
+        connection?.state.displayLabel ?? "Offline"
     }
 
     private var statusPlaceholder: some View {
@@ -179,8 +173,7 @@ struct BatteryDetailView: View {
             Text(stateLabel).font(.subheadline).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
 
     private var groupSection: some View {
@@ -199,8 +192,7 @@ struct BatteryDetailView: View {
             }
             .pickerStyle(.menu)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
 
     @ViewBuilder
@@ -262,8 +254,7 @@ private struct DeviceInfoSection: View {
                 }
             }
         }
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
 
     @ViewBuilder

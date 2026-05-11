@@ -1,5 +1,14 @@
 import SwiftUI
 
+extension View {
+    /// Standard inset card: padding + secondarySystemBackground with 12pt corners.
+    func cardStyle() -> some View {
+        self
+            .padding()
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+    }
+}
+
 struct StatCard: View {
     let label: String
     let value: String
@@ -15,8 +24,7 @@ struct StatCard: View {
             Text(value).font(.title3).fontWeight(.semibold).monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
 }
 
