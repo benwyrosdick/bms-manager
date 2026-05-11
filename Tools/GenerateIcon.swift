@@ -88,7 +88,7 @@ cg.drawLinearGradient(
 
 // MARK: - Battery body (automotive / marine style — two top posts, no side nub)
 
-let batteryRect = CGRect(x: 162, y: 340, width: 700, height: 440)
+let batteryRect = CGRect(x: 162, y: 300, width: 700, height: 440)
 let batteryPath = CGPath(roundedRect: batteryRect, cornerWidth: 40, cornerHeight: 40, transform: nil)
 
 // Posts: stubby rounded rectangles sitting on top of the battery body.
@@ -156,7 +156,7 @@ cg.restoreGState()
 // MARK: - Heartbeat / ECG wave
 
 // Drawn twice: a thick soft "glow" underneath and a thinner crisp line on top.
-let baseY: CGFloat = 590    // ECG baseline (below the polarity marks, centered in lower body)
+let baseY: CGFloat = batteryRect.minY + 250    // ECG baseline (below the polarity marks, centered in lower body)
 let startX = innerRect.minX + 32
 let endX   = innerRect.maxX - 32
 
