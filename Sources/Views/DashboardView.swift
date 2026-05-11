@@ -85,7 +85,7 @@ struct DashboardView: View {
     private func deleteBatteries(_ offsets: IndexSet, in source: [Battery]) {
         for offset in offsets {
             let battery = source[offset]
-            ble.disconnect(savedIdentifier: battery.peripheralIdentifier)
+            ble.forgetConnection(savedIdentifier: battery.peripheralIdentifier)
             modelContext.delete(battery)
         }
     }

@@ -12,47 +12,13 @@ import SwiftData
 @MainActor
 enum MockSeed {
     static func seedIfNeeded(modelContext: ModelContext, ble: BLEManager) {
-        // Skip if the user has already added (or seeded) anything.
         let descriptor = FetchDescriptor<Battery>()
         if let existing = try? modelContext.fetch(descriptor), !existing.isEmpty {
-            // Make sure live BatteryConnections exist for any seeded record.
             for battery in existing where ble.connection(for: battery.peripheralIdentifier) == nil {
                 reseedConnection(for: battery, ble: ble)
             }
             return
         }
-
-        // 4 LiFePO4 12V batteries + a 2-pack parallel house bank.
-        let blueprints: [Blueprint] = [
-            Blueprint(
-                name: "Starboard House",
-                soc: 76, current: -8.5,
-                nominalAh: 100, cycles: 142, tempC: 22.4,
-                manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                cellOffsets: [+2, -1, 0, -1]
-            ),
-            Blueprint(
-                name: "Port House",
-                soc: 81, current: -8.5,
-                nominalAh: 100, cycles: 138, tempC: 22.8,
-                manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                cellOffsets: [+1, +1, -1, -1]
-            ),
-            Blueprint(
-                name: "Bow Thruster",
-                soc: 100, current: 0.0,
-                nominalAh: 100, cycles: 28, tempC: 19.1,
-                manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                cellOffsets: [0, 0, 0, 0]
-            ),
-            Blueprint(
-                name: "Solar Bank",
-                soc: 65, current: +12.3,
-                nominalAh: 100, cycles: 87, tempC: 24.7,
-                manufacturer: "Renogy", model: "RBT100LFP", firmware: "1.4",
-                cellOffsets: [+3, -2, +1, -2]
-            )
-        ]
 
         var saved: [Battery] = []
         for (i, bp) in blueprints.enumerated() {
@@ -69,7 +35,6 @@ enum MockSeed {
             ble.registerMock(makeConnection(uuid: uuid, blueprint: bp))
         }
 
-        // A parallel house bank: Starboard + Port.
         let bank = BatteryGroup(name: "House Bank", configuration: .parallel)
         modelContext.insert(bank)
         for battery in saved.prefix(2) {
@@ -84,8 +49,7 @@ enum MockSeed {
     /// the dashboard's live readings.
     private static func reseedConnection(for battery: Battery, ble: BLEManager) {
         guard let uuid = UUID(uuidString: battery.peripheralIdentifier) else { return }
-        // Look up which blueprint to use by name; fall back to a generic one.
-        let bp: Blueprint = matchingBlueprint(for: battery.name) ?? Blueprint(
+        let bp = blueprints.first { $0.name == battery.name } ?? Blueprint(
             name: battery.name,
             soc: 88, current: 0,
             nominalAh: battery.nominalCapacityAh ?? 100,
@@ -96,31 +60,36 @@ enum MockSeed {
         ble.registerMock(makeConnection(uuid: uuid, blueprint: bp))
     }
 
-    private static func matchingBlueprint(for name: String) -> Blueprint? {
-        switch name {
-        case "Starboard House":
-            return Blueprint(name: name, soc: 76, current: -8.5,
-                             nominalAh: 100, cycles: 142, tempC: 22.4,
-                             manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                             cellOffsets: [+2, -1, 0, -1])
-        case "Port House":
-            return Blueprint(name: name, soc: 81, current: -8.5,
-                             nominalAh: 100, cycles: 138, tempC: 22.8,
-                             manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                             cellOffsets: [+1, +1, -1, -1])
-        case "Bow Thruster":
-            return Blueprint(name: name, soc: 100, current: 0.0,
-                             nominalAh: 100, cycles: 28, tempC: 19.1,
-                             manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
-                             cellOffsets: [0, 0, 0, 0])
-        case "Solar Bank":
-            return Blueprint(name: name, soc: 65, current: +12.3,
-                             nominalAh: 100, cycles: 87, tempC: 24.7,
-                             manufacturer: "Renogy", model: "RBT100LFP", firmware: "1.4",
-                             cellOffsets: [+3, -2, +1, -2])
-        default: return nil
-        }
-    }
+    private static let blueprints: [Blueprint] = [
+        Blueprint(
+            name: "Starboard House",
+            soc: 76, current: -8.5,
+            nominalAh: 100, cycles: 142, tempC: 22.4,
+            manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
+            cellOffsets: [+2, -1, 0, -1]
+        ),
+        Blueprint(
+            name: "Port House",
+            soc: 81, current: -8.5,
+            nominalAh: 100, cycles: 138, tempC: 22.8,
+            manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
+            cellOffsets: [+1, +1, -1, -1]
+        ),
+        Blueprint(
+            name: "Bow Thruster",
+            soc: 100, current: 0.0,
+            nominalAh: 100, cycles: 28, tempC: 19.1,
+            manufacturer: "Impulse Lithium", model: "IL-12100", firmware: "2.6",
+            cellOffsets: [0, 0, 0, 0]
+        ),
+        Blueprint(
+            name: "Solar Bank",
+            soc: 65, current: +12.3,
+            nominalAh: 100, cycles: 87, tempC: 24.7,
+            manufacturer: "Renogy", model: "RBT100LFP", firmware: "1.4",
+            cellOffsets: [+3, -2, +1, -2]
+        )
+    ]
 
     private static func makeConnection(uuid: UUID, blueprint bp: Blueprint) -> BatteryConnection {
         let stats = makeStats(blueprint: bp)

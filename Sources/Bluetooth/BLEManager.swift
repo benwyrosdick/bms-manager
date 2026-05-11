@@ -121,6 +121,16 @@ final class BLEManager: NSObject, ObservableObject {
         connections[uuid]?.disconnect()
     }
 
+    /// Tear down the connection for a saved battery being removed: cancels the
+    /// active link and drops the in-memory `BatteryConnection` and its observer
+    /// so the `CBPeripheral` is released.
+    func forgetConnection(savedIdentifier: String) {
+        guard let uuid = UUID(uuidString: savedIdentifier) else { return }
+        connections[uuid]?.disconnect()
+        connections.removeValue(forKey: uuid)
+        connectionObservers.removeValue(forKey: uuid)
+    }
+
     // MARK: - Maintenance
 
     private func upsertDiscovery(
@@ -137,9 +147,14 @@ final class BLEManager: NSObject, ObservableObject {
             lastSeen: .now
         )
         if let idx = discovered.firstIndex(where: { $0.id == entry.id }) {
+            // RSSI fluctuates on every advertising packet; updating in place
+            // preserves the existing sort order so the list doesn't reshuffle.
             discovered[idx] = entry
         } else {
-            discovered.append(entry)
+            // Insert in name-sorted order so the view can iterate `discovered`
+            // directly without re-sorting on every render.
+            let insertIdx = discovered.firstIndex(where: { sortsAfter(entry, $0) }) ?? discovered.endIndex
+            discovered.insert(entry, at: insertIdx)
             log.log(
                 "Discovered \(name) RSSI \(rssi) services=[\(services.map(\.uuidString).joined(separator: ","))]",
                 category: .scan,
@@ -147,6 +162,14 @@ final class BLEManager: NSObject, ObservableObject {
             )
         }
         pruneStale()
+    }
+
+    /// Stable name-then-UUID ordering. Returns true if `a` should be placed
+    /// before `b`.
+    private func sortsAfter(_ a: DiscoveredPeripheral, _ b: DiscoveredPeripheral) -> Bool {
+        let cmp = a.name.localizedCaseInsensitiveCompare(b.name)
+        if cmp != .orderedSame { return cmp == .orderedAscending }
+        return a.id.uuidString < b.id.uuidString
     }
 
     private func pruneStale() {

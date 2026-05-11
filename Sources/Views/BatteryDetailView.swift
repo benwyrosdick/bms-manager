@@ -115,7 +115,7 @@ struct BatteryDetailView: View {
                     }
 
                     Button(role: .destructive) {
-                        ble.disconnect(savedIdentifier: battery.peripheralIdentifier)
+                        ble.forgetConnection(savedIdentifier: battery.peripheralIdentifier)
                         modelContext.delete(battery)
                     } label: {
                         Label("Remove", systemImage: "trash")

@@ -25,6 +25,21 @@ struct BatteryStats: Equatable, Sendable {
 
     var powerWatts: Double { voltage * current }
 
+    /// Returns true if every field except `timestamp` matches `other`. Used to
+    /// skip republishing identical stats on every poll cycle.
+    func materiallyEquals(_ other: BatteryStats) -> Bool {
+        voltage == other.voltage
+            && current == other.current
+            && stateOfCharge == other.stateOfCharge
+            && remainingCapacityAh == other.remainingCapacityAh
+            && nominalCapacityAh == other.nominalCapacityAh
+            && cycleCount == other.cycleCount
+            && temperaturesC == other.temperaturesC
+            && chargeFETOn == other.chargeFETOn
+            && dischargeFETOn == other.dischargeFETOn
+            && cellCount == other.cellCount
+    }
+
     /// Time until SOC reaches 0 (discharging) or 100 (charging), as a TimeInterval.
     var timeToEmpty: TimeInterval? {
         guard isDischarging else { return nil }

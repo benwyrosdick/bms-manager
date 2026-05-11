@@ -253,7 +253,7 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
             switch cmd {
             case 0x03:
                 let info = try JBDProtocol.decodeBasicInfo(payload: payload)
-                stats = BatteryStats(
+                let next = BatteryStats(
                     voltage: info.totalVoltage,
                     current: info.current,
                     stateOfCharge: info.stateOfCharge,
@@ -266,13 +266,20 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
                     cellCount: info.cellCount,
                     timestamp: .now
                 )
+                // Republish only on material change; idle packs would otherwise
+                // fire objectWillChange every poll cycle just to bump timestamp.
+                if stats?.materiallyEquals(next) != true {
+                    stats = next
+                }
                 lastError = nil
                 log.log("Basic info: \(String(format: "%.2fV %+.2fA %.0f%% cycles=%d", info.totalVoltage, info.current, info.stateOfCharge, info.cycleCount))",
                         category: .frame, peripheral: peripheralIDString)
             case 0x04:
                 let cells = try JBDProtocol.decodeCellVoltages(payload: payload)
-                cellVoltages = cells
-                cellsUpdatedAt = .now
+                if cellVoltages != cells {
+                    cellVoltages = cells
+                    cellsUpdatedAt = .now
+                }
                 let mn = cells.min() ?? 0
                 let mx = cells.max() ?? 0
                 log.log(String(format: "Cells: %d × avg=%.3fV min=%.3fV max=%.3fV Δ=%.3fV",
