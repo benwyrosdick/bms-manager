@@ -93,7 +93,7 @@ struct StatGrid: View {
             StatCard(label: "Cycles", value: Format.cycles(stats.cycleCount), icon: "arrow.triangle.2.circlepath", tint: .indigo)
             StatCard(
                 label: "Temperature",
-                value: stats.maxTemperatureC.map(Format.tempC) ?? "—",
+                value: stats.maxTemperatureC.map(Format.temp) ?? "—",
                 icon: "thermometer.medium",
                 tint: .red
             )

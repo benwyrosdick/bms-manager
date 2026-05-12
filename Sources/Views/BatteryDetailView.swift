@@ -9,6 +9,7 @@ struct BatteryDetailView: View {
 
     @State private var editingName = false
     @State private var showDiagnostics = false
+    @AppStorage(AppSettings.cellPollingKey) private var cellPollingEnabled: Bool = true
 
     private var connection: BatteryConnection? {
         ble.connection(for: battery.peripheralIdentifier)
@@ -31,7 +32,7 @@ struct BatteryDetailView: View {
                             .padding(.horizontal)
                     }
 
-                    if let connection, !connection.cellVoltages.isEmpty {
+                    if cellPollingEnabled, let connection, !connection.cellVoltages.isEmpty {
                         CellGridView(cells: connection.cellVoltages, updatedAt: connection.cellsUpdatedAt)
                             .padding(.horizontal)
                     }
@@ -300,7 +301,7 @@ private struct TempStrip: View {
                 ForEach(Array(temps.enumerated()), id: \.offset) { idx, t in
                     VStack {
                         Text("T\(idx + 1)").font(.caption2).foregroundStyle(.secondary)
-                        Text(Format.tempC(t)).font(.callout).monospacedDigit()
+                        Text(Format.temp(t)).font(.callout).monospacedDigit()
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)

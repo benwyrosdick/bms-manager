@@ -73,7 +73,15 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     private var notifyCharacteristic: CBCharacteristic?
     private let assembler = JBDFrameAssembler()
     private var pollTask: Task<Void, Never>?
-    private let pollInterval: TimeInterval = 3.0
+    /// Resolved each poll cycle so live setting changes apply on the next tick.
+    private var pollInterval: TimeInterval {
+        let stored = UserDefaults.standard.double(forKey: AppSettings.pollIntervalKey)
+        return stored > 0 ? stored : 3.0
+    }
+
+    private var cellPollingEnabled: Bool {
+        UserDefaults.standard.object(forKey: AppSettings.cellPollingKey) as? Bool ?? true
+    }
     private let log = BLELogger.shared
 
     init(peripheral: CBPeripheral, central: CBCentralManager) {
@@ -203,12 +211,19 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
             guard let self else { return }
             while !Task.isCancelled {
                 self.requestBasicInfo()
-                // Stagger the cell-voltages request so the two writes don't
-                // collide in the BMS's small input buffer.
-                try? await Task.sleep(nanoseconds: 400_000_000)
-                if Task.isCancelled { return }
-                self.requestCellVoltages()
-                try? await Task.sleep(nanoseconds: UInt64((self.pollInterval - 0.4) * 1_000_000_000))
+
+                let interval = self.pollInterval
+                if self.cellPollingEnabled {
+                    // Stagger the cell-voltages request so the two writes
+                    // don't collide in the BMS's small input buffer.
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                    if Task.isCancelled { return }
+                    self.requestCellVoltages()
+                    let remaining = max(0.1, interval - 0.4)
+                    try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
+                } else {
+                    try? await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
+                }
             }
         }
     }
