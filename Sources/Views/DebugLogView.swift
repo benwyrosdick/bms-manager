@@ -4,18 +4,26 @@ import UIKit
 struct DebugLogView: View {
     @ObservedObject private var logger = BLELogger.shared
     @State private var filter: BLELogger.Category? = nil
-    @State private var autoscroll = true
+    // When non-nil, the displayed log is frozen at this snapshot — new
+    // entries still arrive in the logger but they don't render until the user
+    // resumes. When nil, the view follows the live entry stream.
+    @State private var pausedSnapshot: [BLELogger.Entry]?
     // Bumped by the toolbar to request a manual scroll-to-latest. The
     // ScrollViewReader observes it via onChange.
     @State private var jumpRequested = 0
 
-    private var filtered: [BLELogger.Entry] {
-        guard let filter else { return logger.entries }
-        return logger.entries.filter { $0.category == filter }
+    private var isPaused: Bool { pausedSnapshot != nil }
+
+    /// Entries to display: the frozen snapshot when paused, else the live log.
+    /// Filter is applied on top so changing categories while paused still works.
+    private var displayed: [BLELogger.Entry] {
+        let source = pausedSnapshot ?? logger.entries
+        guard let filter else { return source }
+        return source.filter { $0.category == filter }
     }
 
     var body: some View {
-        let entries = filtered
+        let entries = displayed
         let lastID = entries.last?.id
         return NavigationStack {
             VStack(spacing: 0) {
@@ -35,7 +43,9 @@ struct DebugLogView: View {
                         .padding(.vertical, 8)
                     }
                     .onChange(of: lastID) { _, newID in
-                        if autoscroll, let newID {
+                        // Only auto-follow while not paused; when paused, lastID
+                        // is the frozen snapshot's tail and doesn't change anyway.
+                        if !isPaused, let newID {
                             withAnimation(.linear(duration: 0.1)) {
                                 proxy.scrollTo(newID, anchor: .bottom)
                             }
@@ -57,17 +67,24 @@ struct DebugLogView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        autoscroll.toggle()
-                        // Resuming auto-follow should immediately jump to the
-                        // latest so the user sees the effect.
-                        if autoscroll { jumpRequested += 1 }
+                        if isPaused {
+                            // Resume: drop the snapshot and jump to latest.
+                            pausedSnapshot = nil
+                            jumpRequested += 1
+                        } else {
+                            // Pause: freeze the full logger entries at this
+                            // moment. Filter is re-applied at render time so
+                            // category chips still work while paused.
+                            pausedSnapshot = logger.entries
+                        }
                     } label: {
                         Label(
-                            autoscroll ? "Following" : "Paused",
-                            systemImage: autoscroll ? "play.circle.fill" : "pause.circle"
+                            isPaused ? "Paused" : "Following",
+                            systemImage: isPaused ? "pause.circle.fill" : "play.circle.fill"
                         )
                         .labelStyle(.titleAndIcon)
                         .font(.callout)
+                        .foregroundStyle(isPaused ? Theme.warning : Theme.accent)
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
