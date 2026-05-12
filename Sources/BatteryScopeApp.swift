@@ -1,14 +1,21 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 @main
 struct BatteryScopeApp: App {
     @StateObject private var ble = BLEManager()
 
+    init() {
+        Theme.applyUIKitAppearance()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(ble)
+                .preferredColorScheme(.dark)
+                .tint(Theme.accent)
         }
         .modelContainer(for: [Battery.self, BatteryGroup.self])
     }

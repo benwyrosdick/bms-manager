@@ -31,6 +31,7 @@ struct DashboardView: View {
                             GroupRowLink(group: group)
                         }
                         .onDelete(perform: deleteGroups)
+                        .listRowBackground(Theme.surface)
                     }
                 }
 
@@ -40,9 +41,12 @@ struct DashboardView: View {
                             BatteryRowLink(battery: battery)
                         }
                         .onDelete { offsets in deleteBatteries(offsets, in: ungrouped) }
+                        .listRowBackground(Theme.surface)
                     }
                 }
             }
+            .themedScrollBackground()
+            .themedNavigation()
             .navigationTitle("Dashboard")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {

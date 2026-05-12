@@ -20,6 +20,7 @@ struct SettingsView: View {
                     Toggle(isOn: $debugToolsEnabled) {
                         Label("Show debug tools", systemImage: "ladybug.fill")
                     }
+                    .listRowBackground(Theme.surface)
                 } header: {
                     Text("Developer")
                 } footer: {
@@ -34,8 +35,11 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
                     }
+                    .listRowBackground(Theme.surface)
                 }
             }
+            .themedScrollBackground()
+            .themedNavigation()
             .navigationTitle("Settings")
         }
     }

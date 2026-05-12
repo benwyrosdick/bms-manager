@@ -19,7 +19,7 @@ struct DebugLogView: View {
                 filterBar
                     .padding(.horizontal)
                     .padding(.vertical, 8)
-                    .background(Color(.secondarySystemBackground))
+                    .background(Theme.surface)
 
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -40,6 +40,8 @@ struct DebugLogView: View {
                     }
                 }
             }
+            .background(Theme.background.ignoresSafeArea())
+            .themedNavigation()
             .navigationTitle("Debug log")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -91,7 +93,7 @@ private struct FilterChip: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .background(
-                    Capsule().fill(isOn ? Color.accentColor : Color(.tertiarySystemFill))
+                    Capsule().fill(isOn ? Color.accentColor : Theme.surfaceHigh)
                 )
                 .foregroundStyle(isOn ? Color.white : Color.primary)
         }
@@ -124,7 +126,7 @@ private struct LogRow: View {
                     Text(entry.category.rawValue)
                         .font(.system(.caption2, design: .monospaced))
                         .padding(.horizontal, 4)
-                        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 3))
+                        .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 3))
                     if let p = entry.peripheral {
                         Text(String(p.suffix(8)))
                             .font(.system(.caption2, design: .monospaced))

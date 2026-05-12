@@ -35,10 +35,14 @@ struct ScannerView: View {
                                     onAdd: { add(entry) }
                                 )
                             }
+                            .listRowBackground(Theme.surface)
                         }
                     }
                 }
+                .themedScrollBackground()
             }
+            .background(Theme.background.ignoresSafeArea())
+            .themedNavigation()
             .navigationTitle("Scan")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {

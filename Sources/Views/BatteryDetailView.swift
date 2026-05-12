@@ -60,6 +60,8 @@ struct BatteryDetailView: View {
             }
             .padding(.vertical)
         }
+        .background(Theme.background.ignoresSafeArea())
+        .themedNavigation()
         .navigationTitle(battery.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -302,7 +304,7 @@ private struct TempStrip: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(Color(.tertiarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+                    .background(Theme.surfaceHigh, in: RoundedRectangle(cornerRadius: 8))
                 }
             }
         }

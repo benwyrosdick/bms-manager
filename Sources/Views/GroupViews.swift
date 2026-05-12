@@ -39,6 +39,8 @@ struct GroupDetailView: View {
             }
             .padding(.vertical)
         }
+        .background(Theme.background.ignoresSafeArea())
+        .themedNavigation()
         .navigationTitle(group.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -162,6 +164,7 @@ struct GroupEditView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                .listRowBackground(Theme.surface)
 
                 Section("Batteries") {
                     if eligibleBatteries.isEmpty {
@@ -182,6 +185,7 @@ struct GroupEditView: View {
                         }
                     }
                 }
+                .listRowBackground(Theme.surface)
 
                 if configuration == .series {
                     Section {
@@ -195,6 +199,9 @@ struct GroupEditView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+            .themedNavigation()
             .navigationTitle(group == nil ? "New group" : "Edit group")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

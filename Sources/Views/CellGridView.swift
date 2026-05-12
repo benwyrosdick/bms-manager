@@ -99,7 +99,7 @@ private struct CellChip: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.tertiarySystemBackground))
+                .fill(Theme.surfaceHigh)
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(color.opacity(voltage == min || voltage == max ? 0.6 : 0), lineWidth: 1.5)

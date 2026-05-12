@@ -1,11 +1,27 @@
 import SwiftUI
 
 extension View {
-    /// Standard inset card: padding + secondarySystemBackground with 12pt corners.
+    /// Standard inset card: padding + theme surface tone with 12pt corners.
     func cardStyle() -> some View {
         self
             .padding()
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    /// Replace a scrolling container's default iOS gray with the theme navy.
+    /// Apply to List, Form, and ScrollView roots.
+    func themedScrollBackground() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+    }
+
+    /// Force the navigation bar's color scheme to dark so titles and bar
+    /// items remain legible on iOS 26's Liquid Glass translucent toolbar.
+    /// We deliberately do **not** force `.toolbarBackground` to a solid color
+    /// — that fights the floating-pill design and was hiding the title.
+    func themedNavigation() -> some View {
+        self.toolbarColorScheme(.dark, for: .navigationBar)
     }
 }
 
@@ -43,7 +59,7 @@ struct SOCBar: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color(.tertiarySystemFill))
+                Capsule().fill(Theme.surfaceHigh)
                 Capsule()
                     .fill(color)
                     .frame(width: max(0, min(percent / 100, 1)) * geo.size.width)
