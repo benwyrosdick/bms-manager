@@ -5,6 +5,9 @@ struct DebugLogView: View {
     @ObservedObject private var logger = BLELogger.shared
     @State private var filter: BLELogger.Category? = nil
     @State private var autoscroll = true
+    // Bumped by the toolbar to request a manual scroll-to-latest. The
+    // ScrollViewReader observes it via onChange.
+    @State private var jumpRequested = 0
 
     private var filtered: [BLELogger.Entry] {
         guard let filter else { return logger.entries }
@@ -38,6 +41,13 @@ struct DebugLogView: View {
                             }
                         }
                     }
+                    .onChange(of: jumpRequested) { _, _ in
+                        if let lastID {
+                            withAnimation(.linear(duration: 0.15)) {
+                                proxy.scrollTo(lastID, anchor: .bottom)
+                            }
+                        }
+                    }
                 }
             }
             .background(Theme.background.ignoresSafeArea())
@@ -46,13 +56,27 @@ struct DebugLogView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Toggle("Auto", isOn: $autoscroll)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .controlSize(.mini)
+                    Button {
+                        autoscroll.toggle()
+                        // Resuming auto-follow should immediately jump to the
+                        // latest so the user sees the effect.
+                        if autoscroll { jumpRequested += 1 }
+                    } label: {
+                        Label(
+                            autoscroll ? "Following" : "Paused",
+                            systemImage: autoscroll ? "play.circle.fill" : "pause.circle"
+                        )
+                        .labelStyle(.titleAndIcon)
+                        .font(.callout)
+                    }
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
+                        Button {
+                            jumpRequested += 1
+                        } label: {
+                            Label("Jump to latest", systemImage: "arrow.down.to.line")
+                        }
                         Button("Copy all") { copyAll() }
                         Button("Clear", role: .destructive) { logger.clear() }
                     } label: {
