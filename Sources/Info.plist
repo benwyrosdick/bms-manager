@@ -22,6 +22,8 @@
 	<string>1</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>BatteryScope uses Bluetooth to read live data from your battery management systems.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
