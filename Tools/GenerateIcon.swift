@@ -64,8 +64,8 @@ func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> CGColor {
     CGColor(srgbRed: r, green: g, blue: b, alpha: a)
 }
 
-let bgTop      = rgb(0.04, 0.18, 0.24)      // deep teal
-let bgBottom   = rgb(0.06, 0.30, 0.28)      // forest dark
+let bgTop      = rgb(0.04, 0.08, 0.16)      // deep blue
+let bgBottom   = rgb(0.06, 0.12, 0.30)      // accent dark blue
 let batteryStroke   = rgb(0.91, 0.96, 0.95) // off-white
 let batteryInner    = rgb(0.03, 0.13, 0.17) // near-black teal
 let waveGlow        = rgb(0.24, 0.91, 0.46) // bright green
