@@ -122,9 +122,12 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
         guard state != .connecting && state != .ready && state != .discovering else { return }
         state = .connecting
         log.log("Connect requested", category: .connect, peripheral: peripheralIDString)
-        central.connect(peripheral, options: [
-            CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
-        ])
+        // Deliberately omit CBConnectPeripheralOptionNotifyOnDisconnectionKey:
+        // iOS posts a system "accessory disconnected" notification when that
+        // option is true, which surprises users since we never asked for
+        // notification permission. The dashboard already shows a "Tap to
+        // retry" row state when this happens.
+        central.connect(peripheral, options: nil)
     }
 
     func disconnect() {
