@@ -23,6 +23,13 @@ extension View {
     func themedNavigation() -> some View {
         self.toolbarColorScheme(.dark, for: .navigationBar)
     }
+
+    /// Apply the theme's surface tone to List / Form section rows. Call once
+    /// per Section instead of `.listRowBackground(Theme.surface)` so the row
+    /// styling stays consistent across the app.
+    func themedListRows() -> some View {
+        self.listRowBackground(Theme.surface)
+    }
 }
 
 struct StatCard: View {
@@ -71,6 +78,11 @@ struct SOCBar: View {
 
 struct StatGrid: View {
     let stats: BatteryStats
+    @AppStorage(AppSettings.temperatureUnitKey) private var temperatureUnitRaw: String = AppSettings.temperatureUnitDefault.rawValue
+
+    private var temperatureUnit: TemperatureUnit {
+        TemperatureUnit(rawValue: temperatureUnitRaw) ?? AppSettings.temperatureUnitDefault
+    }
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
@@ -93,7 +105,7 @@ struct StatGrid: View {
             StatCard(label: "Cycles", value: Format.cycles(stats.cycleCount), icon: "arrow.triangle.2.circlepath", tint: .indigo)
             StatCard(
                 label: "Temperature",
-                value: stats.maxTemperatureC.map(Format.temp) ?? "—",
+                value: stats.maxTemperatureC.map { Format.temp($0, in: temperatureUnit) } ?? "—",
                 icon: "thermometer.medium",
                 tint: .red
             )

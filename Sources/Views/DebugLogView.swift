@@ -8,8 +8,6 @@ struct DebugLogView: View {
     // entries still arrive in the logger but they don't render until the user
     // resumes. When nil, the view follows the live entry stream.
     @State private var pausedSnapshot: [BLELogger.Entry]?
-    // Bumped by the toolbar to request a manual scroll-to-latest. The
-    // ScrollViewReader observes it via onChange.
     @State private var jumpRequested = 0
 
     private var isPaused: Bool { pausedSnapshot != nil }
@@ -68,13 +66,11 @@ struct DebugLogView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         if isPaused {
-                            // Resume: drop the snapshot and jump to latest.
                             pausedSnapshot = nil
                             jumpRequested += 1
                         } else {
-                            // Pause: freeze the full logger entries at this
-                            // moment. Filter is re-applied at render time so
-                            // category chips still work while paused.
+                            // Freeze the full logger entries; filter is re-applied
+                            // at render time so category chips still work paused.
                             pausedSnapshot = logger.entries
                         }
                     } label: {

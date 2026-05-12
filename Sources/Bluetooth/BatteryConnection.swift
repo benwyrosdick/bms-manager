@@ -73,15 +73,10 @@ final class BatteryConnection: NSObject, ObservableObject, Identifiable {
     private var notifyCharacteristic: CBCharacteristic?
     private let assembler = JBDFrameAssembler()
     private var pollTask: Task<Void, Never>?
-    /// Resolved each poll cycle so live setting changes apply on the next tick.
-    private var pollInterval: TimeInterval {
-        let stored = UserDefaults.standard.double(forKey: AppSettings.pollIntervalKey)
-        return stored > 0 ? stored : 3.0
-    }
-
-    private var cellPollingEnabled: Bool {
-        UserDefaults.standard.object(forKey: AppSettings.cellPollingKey) as? Bool ?? true
-    }
+    /// Resolved via `AppSettings` each poll cycle so live setting changes
+    /// apply on the next tick.
+    private var pollInterval: TimeInterval { AppSettings.pollInterval }
+    private var cellPollingEnabled: Bool { AppSettings.cellPollingEnabled }
     private let log = BLELogger.shared
 
     init(peripheral: CBPeripheral, central: CBCentralManager) {

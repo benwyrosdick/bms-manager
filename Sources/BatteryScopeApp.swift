@@ -1,14 +1,9 @@
 import SwiftUI
 import SwiftData
-import UIKit
 
 @main
 struct BatteryScopeApp: App {
     @StateObject private var ble = BLEManager()
-
-    init() {
-        Theme.applyUIKitAppearance()
-    }
 
     var body: some Scene {
         WindowGroup {

@@ -164,7 +164,7 @@ struct GroupEditView: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                .listRowBackground(Theme.surface)
+                .themedListRows()
 
                 Section("Batteries") {
                     if eligibleBatteries.isEmpty {
@@ -185,7 +185,7 @@ struct GroupEditView: View {
                         }
                     }
                 }
-                .listRowBackground(Theme.surface)
+                .themedListRows()
 
                 if configuration == .series {
                     Section {

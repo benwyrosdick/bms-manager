@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 /// Centralized palette for the BatteryScope dark theme. Uses a deep navy
 /// background with slightly raised surface tones for cards, and a vivid green
@@ -24,14 +23,4 @@ enum Theme {
     /// default `.red` / `.orange` so they remain legible on the deep navy.
     static let danger = Color(red: 1.00, green: 0.42, blue: 0.42)
     static let warning = Color(red: 1.00, green: 0.72, blue: 0.30)
-
-    /// iOS 26's Liquid Glass design renders the nav bar as floating pills over
-    /// content — forcing a solid `UINavigationBarAppearance` background hides
-    /// the title. We leave the nav bar to the system (it picks up dark mode
-    /// automatically via `.preferredColorScheme(.dark)`), and only tweak items
-    /// that need explicit theming.
-    static func applyUIKitAppearance() {
-        // Intentionally empty for iOS 26. Add per-platform appearance tweaks
-        // here if older iOS support is ever reintroduced.
-    }
 }

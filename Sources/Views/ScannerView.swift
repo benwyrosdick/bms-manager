@@ -35,7 +35,7 @@ struct ScannerView: View {
                                     onAdd: { add(entry) }
                                 )
                             }
-                            .listRowBackground(Theme.surface)
+                            .themedListRows()
                         }
                     }
                 }

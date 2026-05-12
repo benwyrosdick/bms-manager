@@ -293,6 +293,11 @@ private struct DiagnosticRow: View {
 
 private struct TempStrip: View {
     let temps: [Double]
+    @AppStorage(AppSettings.temperatureUnitKey) private var temperatureUnitRaw: String = AppSettings.temperatureUnitDefault.rawValue
+
+    private var temperatureUnit: TemperatureUnit {
+        TemperatureUnit(rawValue: temperatureUnitRaw) ?? AppSettings.temperatureUnitDefault
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -301,7 +306,7 @@ private struct TempStrip: View {
                 ForEach(Array(temps.enumerated()), id: \.offset) { idx, t in
                     VStack {
                         Text("T\(idx + 1)").font(.caption2).foregroundStyle(.secondary)
-                        Text(Format.temp(t)).font(.callout).monospacedDigit()
+                        Text(Format.temp(t, in: temperatureUnit)).font(.callout).monospacedDigit()
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)

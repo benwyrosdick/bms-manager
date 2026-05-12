@@ -31,7 +31,7 @@ struct DashboardView: View {
                             GroupRowLink(group: group)
                         }
                         .onDelete(perform: deleteGroups)
-                        .listRowBackground(Theme.surface)
+                        .themedListRows()
                     }
                 }
 
@@ -41,7 +41,7 @@ struct DashboardView: View {
                             BatteryRowLink(battery: battery)
                         }
                         .onDelete { offsets in deleteBatteries(offsets, in: ungrouped) }
-                        .listRowBackground(Theme.surface)
+                        .themedListRows()
                     }
                 }
             }
